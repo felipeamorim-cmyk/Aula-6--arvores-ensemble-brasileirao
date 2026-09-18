@@ -1,0 +1,381 @@
+season,date,home,score,away
+2026,2026-01-28,Atlético MG,2x2,Palmeiras
+2026,2026-01-28,Internacional,0x1,Athletico PR
+2026,2026-01-28,Coritiba,0x1,Bragantino
+2026,2026-01-28,Vitória,2x0,Remo
+2026,2026-01-28,Fluminense,2x1,Grêmio
+2026,2026-01-28,Corinthians,1x2,Bahia
+2026,2026-01-28,Chapecoense,4x2,Santos
+2026,2026-01-28,São Paulo,2x1,Flamengo
+2026,2026-01-29,Mirassol,2x1,Vasco da Gama
+2026,2026-01-29,Botafogo,4x0,Cruzeiro
+2026,2026-02-04,Flamengo,1x1,Internacional
+2026,2026-02-04,Bragantino,1x0,Atlético MG
+2026,2026-02-04,Santos,1x1,São Paulo
+2026,2026-02-04,Remo,2x2,Mirassol
+2026,2026-02-04,Palmeiras,5x1,Vitória
+2026,2026-02-04,Grêmio,5x3,Botafogo
+2026,2026-02-05,Bahia,1x1,Fluminense
+2026,2026-02-05,Vasco da Gama,1x1,Chapecoense
+2026,2026-02-05,Cruzeiro,1x2,Coritiba
+2026,2026-02-19,Athletico PR,0x1,Corinthians
+2026,2026-02-10,Vitória,1x2,Flamengo
+2026,2026-02-11,Mirassol,2x2,Cruzeiro
+2026,2026-02-11,Chapecoense,3x3,Coritiba
+2026,2026-02-11,Atlético MG,3x3,Remo
+2026,2026-02-11,Vasco da Gama,0x1,Bahia
+2026,2026-02-11,São Paulo,2x0,Grêmio
+2026,2026-02-12,Athletico PR,2x1,Santos
+2026,2026-02-12,Fluminense,1x0,Botafogo
+2026,2026-02-12,Corinthians,2x0,Bragantino
+2026,2026-02-12,Internacional,1x3,Palmeiras
+2026,2026-02-25,Bragantino,1x1,Athletico PR
+2026,2026-02-25,Remo,1x1,Internacional
+2026,2026-02-25,Coritiba,0x1,São Paulo
+2026,2026-02-25,Cruzeiro,1x1,Corinthians
+2026,2026-02-25,Palmeiras,2x1,Fluminense
+2026,2026-02-25,Grêmio,2x1,Atlético MG
+2026,2026-02-26,Santos,2x1,Vasco da Gama
+2026,2026-07-17,Bahia,2x0,Chapecoense
+2026,2026-07-23,Botafogo,0x0,Vitória
+2026,2026-09-02,Flamengo,2x0,Mirassol
+2026,2026-03-10,Mirassol,2x2,Santos
+2026,2026-03-11,Atlético MG,1x0,Internacional
+2026,2026-03-11,Bahia,1x1,Vitória
+2026,2026-03-11,Flamengo,2x0,Cruzeiro
+2026,2026-03-11,Corinthians,0x2,Coritiba
+2026,2026-03-12,Remo,0x2,Fluminense
+2026,2026-03-12,Vasco da Gama,2x1,Palmeiras
+2026,2026-03-12,São Paulo,2x0,Chapecoense
+2026,2026-03-12,Grêmio,1x1,Bragantino
+2026,2026-03-29,Athletico PR,4x1,Botafogo
+2026,2026-03-14,Vitória,2x0,Atlético MG
+2026,2026-03-14,Botafogo,0x3,Flamengo
+2026,2026-03-15,Fluminense,3x2,Athletico PR
+2026,2026-03-15,Santos,1x1,Corinthians
+2026,2026-03-15,Internacional,0x1,Bahia
+2026,2026-03-15,Palmeiras,1x0,Mirassol
+2026,2026-03-15,Coritiba,1x0,Remo
+2026,2026-03-15,Bragantino,1x2,São Paulo
+2026,2026-03-15,Cruzeiro,3x3,Vasco da Gama
+2026,2026-03-16,Chapecoense,1x1,Grêmio
+2026,2026-03-18,Palmeiras,2x1,Botafogo
+2026,2026-03-18,Bahia,2x0,Bragantino
+2026,2026-03-18,Athletico PR,2x1,Cruzeiro
+2026,2026-03-18,Mirassol,0x1,Coritiba
+2026,2026-03-18,Atlético MG,1x0,São Paulo
+2026,2026-03-18,Vasco da Gama,3x2,Fluminense
+2026,2026-03-18,Santos,1x2,Internacional
+2026,2026-03-19,Grêmio,2x0,Vitória
+2026,2026-03-19,Flamengo,3x0,Remo
+2026,2026-03-19,Chapecoense,0x0,Corinthians
+2026,2026-03-21,Bragantino,1x2,Botafogo
+2026,2026-03-21,Fluminense,1x0,Atlético MG
+2026,2026-03-21,São Paulo,0x1,Palmeiras
+2026,2026-03-22,Vasco da Gama,2x1,Grêmio
+2026,2026-03-22,Cruzeiro,0x0,Santos
+2026,2026-03-22,Athletico PR,2x0,Coritiba
+2026,2026-03-22,Remo,4x1,Bahia
+2026,2026-03-22,Internacional,2x0,Chapecoense
+2026,2026-03-22,Vitória,1x0,Mirassol
+2026,2026-03-22,Corinthians,1x1,Flamengo
+2026,2026-04-01,Botafogo,3x2,Mirassol
+2026,2026-04-01,Internacional,1x1,São Paulo
+2026,2026-04-01,Cruzeiro,3x0,Vitória
+2026,2026-04-01,Bahia,3x0,Athletico PR
+2026,2026-04-01,Coritiba,1x1,Vasco da Gama
+2026,2026-04-01,Fluminense,3x1,Corinthians
+2026,2026-04-02,Santos,2x0,Remo
+2026,2026-04-02,Chapecoense,0x4,Atlético MG
+2026,2026-04-02,Palmeiras,2x1,Grêmio
+2026,2026-04-02,Bragantino,3x0,Flamengo
+2026,2026-04-04,São Paulo,4x1,Cruzeiro
+2026,2026-04-04,Coritiba,1x1,Fluminense
+2026,2026-04-04,Vasco da Gama,1x2,Botafogo
+2026,2026-04-05,Chapecoense,1x1,Vitória
+2026,2026-04-05,Flamengo,3x1,Santos
+2026,2026-04-05,Atlético MG,2x1,Athletico PR
+2026,2026-04-05,Corinthians,0x1,Internacional
+2026,2026-04-05,Bahia,1x2,Palmeiras
+2026,2026-04-05,Mirassol,0x1,Bragantino
+2026,2026-04-05,Grêmio,0x0,Remo
+2026,2026-04-11,Vitória,2x0,São Paulo
+2026,2026-04-11,Remo,1x1,Vasco da Gama
+2026,2026-04-11,Mirassol,1x2,Bahia
+2026,2026-04-11,Santos,1x0,Atlético MG
+2026,2026-04-11,Internacional,0x0,Grêmio
+2026,2026-04-12,Athletico PR,2x0,Chapecoense
+2026,2026-04-12,Botafogo,2x2,Coritiba
+2026,2026-04-12,Fluminense,1x2,Flamengo
+2026,2026-04-12,Corinthians,0x0,Palmeiras
+2026,2026-04-12,Cruzeiro,2x1,Bragantino
+2026,2026-04-18,Vasco da Gama,2x1,São Paulo
+2026,2026-04-18,Chapecoense,1x4,Botafogo
+2026,2026-04-18,Vitória,0x0,Corinthians
+2026,2026-04-18,Cruzeiro,2x0,Grêmio
+2026,2026-04-19,Internacional,1x2,Mirassol
+2026,2026-04-19,Santos,2x3,Fluminense
+2026,2026-04-19,Coritiba,2x0,Atlético MG
+2026,2026-04-19,Palmeiras,1x0,Athletico PR
+2026,2026-04-19,Bragantino,4x2,Remo
+2026,2026-04-19,Flamengo,2x0,Bahia
+2026,2026-04-25,Botafogo,2x2,Internacional
+2026,2026-04-25,Bahia,2x2,Santos
+2026,2026-04-25,Remo,0x1,Cruzeiro
+2026,2026-04-25,São Paulo,1x0,Mirassol
+2026,2026-04-26,Corinthians,1x0,Vasco da Gama
+2026,2026-04-26,Grêmio,1x0,Coritiba
+2026,2026-04-26,Bragantino,0x1,Palmeiras
+2026,2026-04-26,Athletico PR,3x1,Vitória
+2026,2026-04-26,Fluminense,2x1,Chapecoense
+2026,2026-04-26,Atlético MG,0x4,Flamengo
+2026,2026-05-02,Botafogo,1x2,Remo
+2026,2026-05-02,Palmeiras,1x1,Santos
+2026,2026-05-02,Vitória,4x1,Coritiba
+2026,2026-05-02,Athletico PR,0x0,Grêmio
+2026,2026-05-02,Cruzeiro,1x3,Atlético MG
+2026,2026-05-03,Flamengo,2x2,Vasco da Gama
+2026,2026-05-03,São Paulo,2x2,Bahia
+2026,2026-05-03,Internacional,2x0,Fluminense
+2026,2026-05-03,Chapecoense,1x2,Bragantino
+2026,2026-05-03,Mirassol,2x1,Corinthians
+2026,2026-05-09,Coritiba,2x2,Internacional
+2026,2026-05-09,Fluminense,2x2,Vitória
+2026,2026-05-09,Bahia,1x2,Cruzeiro
+2026,2026-05-10,Atlético MG,1x1,Botafogo
+2026,2026-05-10,Remo,1x1,Palmeiras
+2026,2026-05-10,Santos,2x0,Bragantino
+2026,2026-05-10,Corinthians,3x2,São Paulo
+2026,2026-05-10,Mirassol,1x1,Chapecoense
+2026,2026-05-10,Grêmio,0x1,Flamengo
+2026,2026-05-10,Vasco da Gama,1x0,Athletico PR
+2026,2026-05-16,Atlético MG,3x1,Mirassol
+2026,2026-05-16,Internacional,4x1,Vasco da Gama
+2026,2026-05-16,Fluminense,2x1,São Paulo
+2026,2026-05-16,Palmeiras,1x1,Cruzeiro
+2026,2026-05-17,Santos,0x3,Coritiba
+2026,2026-05-17,Botafogo,3x1,Corinthians
+2026,2026-05-17,Bahia,1x1,Grêmio
+2026,2026-05-17,Bragantino,2x0,Vitória
+2026,2026-05-17,Chapecoense,2x3,Remo
+2026,2026-05-17,Athletico PR,1x1,Flamengo
+2026,2026-05-23,São Paulo,1x1,Botafogo
+2026,2026-05-23,Vitória,2x0,Internacional
+2026,2026-05-23,Mirassol,1x0,Fluminense
+2026,2026-05-23,Grêmio,3x2,Santos
+2026,2026-05-23,Flamengo,0x3,Palmeiras
+2026,2026-05-24,Cruzeiro,2x1,Chapecoense
+2026,2026-05-24,Remo,1x2,Athletico PR
+2026,2026-05-24,Corinthians,1x0,Atlético MG
+2026,2026-05-24,Vasco da Gama,0x3,Bragantino
+2026,2026-05-25,Coritiba,3x2,Bahia
+2026,2026-05-30,Flamengo,3x0,Coritiba
+2026,2026-05-30,Athletico PR,1x0,Mirassol
+2026,2026-05-30,Grêmio,1x3,Corinthians
+2026,2026-05-30,Bahia,2x1,Botafogo
+2026,2026-05-30,Santos,3x1,Vitória
+2026,2026-05-31,Bragantino,3x1,Internacional
+2026,2026-05-31,Vasco da Gama,0x1,Atlético MG
+2026,2026-05-31,Palmeiras,1x0,Chapecoense
+2026,2026-05-31,Cruzeiro,1x1,Fluminense
+2026,2026-05-31,Remo,1x0,São Paulo
+2026,2026-07-16,Botafogo,2x1,Santos
+2026,2026-07-16,Vitória,1x0,Vasco da Gama
+2026,2026-07-17,Fluminense,1x1,Bragantino
+2026,2026-07-17,Mirassol,2x1,Grêmio
+2026,2026-07-21,Atlético MG,1x1,Bahia
+2026,2026-07-22,Coritiba,1x3,Palmeiras
+2026,2026-07-22,São Paulo,1x2,Athletico PR
+2026,2026-07-22,Internacional,1x2,Cruzeiro
+2026,2026-07-22,Chapecoense,0x4,Flamengo
+2026,2026-07-23,Corinthians,3x0,Remo
+2026,2026-07-25,Athletico PR,2x0,Internacional
+2026,2026-07-25,Santos,2x2,Chapecoense
+2026,2026-07-25,Vasco da Gama,1x1,Mirassol
+2026,2026-07-26,Cruzeiro,0x1,Botafogo
+2026,2026-07-26,Bahia,1x1,Corinthians
+2026,2026-07-26,Bragantino,0x0,Coritiba
+2026,2026-07-26,Grêmio,1x1,Fluminense
+2026,2026-07-26,Flamengo,1x1,São Paulo
+2026,2026-07-26,Remo,2x0,Vitória
+2026,2026-07-26,Palmeiras,1x2,Atlético MG
+2026,2026-07-29,Mirassol,2x1,Remo
+2026,2026-07-29,Internacional,1x1,Flamengo
+2026,2026-07-29,Fluminense,0x0,Bahia
+2026,2026-07-29,Vitória,0x4,Palmeiras
+2026,2026-07-30,Corinthians,0x0,Athletico PR
+2026,2026-07-30,Coritiba,0x1,Cruzeiro
+2026,2026-09-16,Botafogo,x,Grêmio
+2026,NA,São Paulo,x,Santos
+2026,NA,Atlético MG,x,Bragantino
+2026,NA,Chapecoense,x,Vasco da Gama
+2026,2026-08-08,Grêmio,2x1,São Paulo
+2026,2026-08-08,Remo,2x2,Atlético MG
+2026,2026-08-08,Coritiba,2x1,Chapecoense
+2026,2026-08-08,Botafogo,1x1,Fluminense
+2026,2026-08-09,Cruzeiro,3x1,Mirassol
+2026,2026-08-09,Palmeiras,0x0,Internacional
+2026,2026-08-09,Bahia,0x0,Vasco da Gama
+2026,2026-08-09,Santos,0x2,Athletico PR
+2026,2026-08-09,Bragantino,0x2,Corinthians
+2026,2026-08-09,Flamengo,2x0,Vitória
+2026,2026-08-15,Fluminense,3x2,Palmeiras
+2026,2026-08-15,Athletico PR,1x1,Bragantino
+2026,2026-08-15,São Paulo,1x1,Coritiba
+2026,2026-08-16,Chapecoense,3x3,Bahia
+2026,2026-08-16,Vasco da Gama,0x3,Santos
+2026,2026-08-16,Atlético MG,3x0,Grêmio
+2026,2026-08-16,Mirassol,1x5,Flamengo
+2026,2026-08-16,Vitória,1x0,Botafogo
+2026,2026-08-16,Corinthians,1x2,Cruzeiro
+2026,2026-08-17,Internacional,1x1,Remo
+2026,2026-08-22,Fluminense,2x1,Remo
+2026,2026-08-22,Internacional,0x0,Atlético MG
+2026,2026-08-22,Cruzeiro,2x1,Flamengo
+2026,2026-08-23,Palmeiras,4x1,Vasco da Gama
+2026,2026-08-23,Bragantino,1x0,Grêmio
+2026,2026-08-23,Vitória,0x2,Bahia
+2026,2026-08-23,Santos,1x1,Mirassol
+2026,2026-08-23,Chapecoense,1x0,São Paulo
+2026,2026-08-23,Coritiba,2x1,Corinthians
+2026,2026-08-24,Botafogo,2x3,Athletico PR
+2026,2026-08-29,Atlético MG,2x1,Vitória
+2026,2026-08-29,São Paulo,2x1,Bragantino
+2026,2026-08-29,Vasco da Gama,3x1,Cruzeiro
+2026,2026-08-30,Athletico PR,3x3,Fluminense
+2026,2026-08-30,Flamengo,3x0,Botafogo
+2026,2026-08-30,Corinthians,0x1,Santos
+2026,2026-08-30,Mirassol,1x1,Palmeiras
+2026,2026-08-30,Grêmio,3x1,Chapecoense
+2026,2026-08-30,Bahia,3x2,Internacional
+2026,2026-08-31,Remo,2x3,Coritiba
+2026,2026-09-05,Bragantino,2x3,Bahia
+2026,2026-09-05,São Paulo,2x0,Atlético MG
+2026,2026-09-05,Fluminense,1x0,Vasco da Gama
+2026,2026-09-06,Coritiba,1x2,Mirassol
+2026,2026-09-06,Cruzeiro,3x1,Athletico PR
+2026,2026-09-06,Internacional,2x3,Santos
+2026,2026-09-06,Remo,0x1,Flamengo
+2026,2026-09-06,Botafogo,0x0,Palmeiras
+2026,2026-09-06,Corinthians,1x2,Chapecoense
+2026,2026-09-07,Vitória,1x0,Grêmio
+2026,2026-09-11,Coritiba,x,Athletico PR
+2026,2026-09-12,Atlético MG,x,Fluminense
+2026,2026-09-12,Grêmio,x,Vasco da Gama
+2026,2026-09-12,Chapecoense,x,Internacional
+2026,2026-09-12,Palmeiras,x,São Paulo
+2026,2026-09-12,Botafogo,x,Bragantino
+2026,2026-09-12,Santos,x,Cruzeiro
+2026,2026-09-13,Mirassol,x,Vitória
+2026,2026-09-13,Flamengo,x,Corinthians
+2026,2026-09-14,Bahia,x,Remo
+2026,2026-09-19,Atlético MG,x,Chapecoense
+2026,2026-09-19,Mirassol,x,Botafogo
+2026,2026-09-19,Remo,x,Santos
+2026,2026-09-19,Vasco da Gama,x,Coritiba
+2026,2026-09-19,São Paulo,x,Internacional
+2026,2026-09-20,Grêmio,x,Palmeiras
+2026,2026-09-20,Corinthians,x,Fluminense
+2026,2026-09-20,Vitória,x,Cruzeiro
+2026,2026-09-20,Flamengo,x,Bragantino
+2026,2026-09-20,Athletico PR,x,Bahia
+2026,2026-10-07,Bragantino,x,Mirassol
+2026,2026-10-07,Internacional,x,Corinthians
+2026,2026-10-07,Remo,x,Grêmio
+2026,2026-10-07,Vitória,x,Chapecoense
+2026,2026-10-07,Botafogo,x,Vasco da Gama
+2026,2026-10-07,Cruzeiro,x,São Paulo
+2026,2026-10-08,Santos,x,Flamengo
+2026,2026-10-08,Athletico PR,x,Atlético MG
+2026,2026-10-08,Fluminense,x,Coritiba
+2026,2026-10-08,Palmeiras,x,Bahia
+2026,2026-10-10,Vasco da Gama,x,Remo
+2026,2026-10-10,São Paulo,x,Vitória
+2026,2026-10-11,Atlético MG,x,Santos
+2026,2026-10-11,Flamengo,x,Fluminense
+2026,2026-10-11,Palmeiras,x,Corinthians
+2026,2026-10-11,Grêmio,x,Internacional
+2026,2026-10-11,Coritiba,x,Botafogo
+2026,2026-10-11,Bahia,x,Mirassol
+2026,2026-10-12,Chapecoense,x,Athletico PR
+2026,2026-10-12,Bragantino,x,Cruzeiro
+2026,2026-10-18,Fluminense,x,Santos
+2026,2026-10-18,Botafogo,x,Chapecoense
+2026,2026-10-18,São Paulo,x,Vasco da Gama
+2026,2026-10-18,Corinthians,x,Vitória
+2026,2026-10-18,Mirassol,x,Internacional
+2026,2026-10-18,Atlético MG,x,Coritiba
+2026,2026-10-18,Grêmio,x,Cruzeiro
+2026,2026-10-18,Athletico PR,x,Palmeiras
+2026,2026-10-18,Bahia,x,Flamengo
+2026,2026-10-18,Remo,x,Bragantino
+2026,2026-10-25,Flamengo,x,Atlético MG
+2026,2026-10-25,Vasco da Gama,x,Corinthians
+2026,2026-10-25,Santos,x,Bahia
+2026,2026-10-25,Palmeiras,x,Bragantino
+2026,2026-10-25,Mirassol,x,São Paulo
+2026,2026-10-25,Cruzeiro,x,Remo
+2026,2026-10-25,Internacional,x,Botafogo
+2026,2026-10-25,Coritiba,x,Grêmio
+2026,2026-10-25,Vitória,x,Athletico PR
+2026,2026-10-25,Chapecoense,x,Fluminense
+2026,2026-10-28,Fluminense,x,Internacional
+2026,2026-10-28,Vasco da Gama,x,Flamengo
+2026,2026-10-28,Santos,x,Palmeiras
+2026,2026-10-28,Corinthians,x,Mirassol
+2026,2026-10-28,Bragantino,x,Chapecoense
+2026,2026-10-28,Atlético MG,x,Cruzeiro
+2026,2026-10-28,Grêmio,x,Athletico PR
+2026,2026-10-28,Coritiba,x,Vitória
+2026,2026-10-28,Bahia,x,São Paulo
+2026,2026-10-28,Remo,x,Botafogo
+2026,2026-11-04,Flamengo,x,Grêmio
+2026,2026-11-04,Botafogo,x,Atlético MG
+2026,2026-11-04,São Paulo,x,Corinthians
+2026,2026-11-04,Palmeiras,x,Remo
+2026,2026-11-04,Bragantino,x,Santos
+2026,2026-11-04,Cruzeiro,x,Bahia
+2026,2026-11-04,Internacional,x,Coritiba
+2026,2026-11-04,Athletico PR,x,Vasco da Gama
+2026,2026-11-04,Vitória,x,Fluminense
+2026,2026-11-04,Chapecoense,x,Mirassol
+2026,2026-11-18,Flamengo,x,Athletico PR
+2026,2026-11-18,Vasco da Gama,x,Internacional
+2026,2026-11-18,São Paulo,x,Fluminense
+2026,2026-11-18,Corinthians,x,Botafogo
+2026,2026-11-18,Mirassol,x,Atlético MG
+2026,2026-11-18,Cruzeiro,x,Palmeiras
+2026,2026-11-18,Grêmio,x,Bahia
+2026,2026-11-18,Coritiba,x,Santos
+2026,2026-11-18,Vitória,x,Bragantino
+2026,2026-11-18,Remo,x,Chapecoense
+2026,2026-11-22,Fluminense,x,Mirassol
+2026,2026-11-22,Botafogo,x,São Paulo
+2026,2026-11-22,Santos,x,Grêmio
+2026,2026-11-22,Palmeiras,x,Flamengo
+2026,2026-11-22,Bragantino,x,Vasco da Gama
+2026,2026-11-22,Atlético MG,x,Corinthians
+2026,2026-11-22,Internacional,x,Vitória
+2026,2026-11-22,Athletico PR,x,Remo
+2026,2026-11-22,Bahia,x,Coritiba
+2026,2026-11-22,Chapecoense,x,Cruzeiro
+2026,2026-11-29,Fluminense,x,Cruzeiro
+2026,2026-11-29,Botafogo,x,Bahia
+2026,2026-11-29,São Paulo,x,Remo
+2026,2026-11-29,Corinthians,x,Grêmio
+2026,2026-11-29,Mirassol,x,Athletico PR
+2026,2026-11-29,Atlético MG,x,Vasco da Gama
+2026,2026-11-29,Internacional,x,Bragantino
+2026,2026-11-29,Coritiba,x,Flamengo
+2026,2026-11-29,Vitória,x,Santos
+2026,2026-11-29,Chapecoense,x,Palmeiras
+2026,2026-12-02,Flamengo,x,Chapecoense
+2026,2026-12-02,Vasco da Gama,x,Vitória
+2026,2026-12-02,Santos,x,Botafogo
+2026,2026-12-02,Palmeiras,x,Coritiba
+2026,2026-12-02,Bragantino,x,Fluminense
+2026,2026-12-02,Cruzeiro,x,Internacional
+2026,2026-12-02,Grêmio,x,Mirassol
+2026,2026-12-02,Athletico PR,x,São Paulo
+2026,2026-12-02,Bahia,x,Atlético MG
+2026,2026-12-02,Remo,x,Corinthians

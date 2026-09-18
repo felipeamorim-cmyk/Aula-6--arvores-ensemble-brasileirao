@@ -1,0 +1,1159 @@
+---
+title: "Árvores de Decisão e Ensembles"
+subtitle: "Machine Learning e Deep Learning — Estudo de caso: Brasileirão 2026"
+author: "Aula 6"
+format:
+  revealjs:
+    theme: simple
+    slide-level: 2
+    smaller: true
+    scrollable: true
+execute:
+  echo: true
+  warning: false
+  message: false
+editor:
+  markdown:
+    wrap: 72
+---
+
+# Abertura e dados
+
+## De onde viemos
+
+Na **Aula 5**, construímos um **baseline** de Regressão Logística:
+
+- 1 variável (`saldo_forca`) → AUROC modesto, Kappa baixo
+- Depois expandimos para 3 variáveis + Lasso → ganho pequeno
+- A regularização zerou `saldo_ataque` — a variável não pagava seu pedágio
+- Conclusão: **a fronteira de decisão linear** limita o desempenho
+
+Hoje, vamos quebrar essa limitação com modelos que aprendem **fronteiras
+não lineares** — e ainda saem contando quais variáveis importam.
+
+> **Pergunta do dia:** *Para prever a vitória do mandante, o que pesa
+> mais para a Floresta Aleatória — o momento recente do time ou a
+> vantagem de jogar em casa?*
+
+## O dataset (mesmo da Aula 5)
+
+```{r}
+#| label: setup
+# Pacotes da Aula 5
+library(tidyverse)    # ← manipulação e gráficos
+library(tidymodels)   # ← rsample, parsnip, yardstick, tune...
+# Pacotes novos da Aula 6
+library(rpart.plot)   # ← visualizar a árvore de decisão
+library(plotly)       # ← gráficos interativos (ROC animada, tooltips, etc.)
+# importância de variáveis: extraída manualmente dos motores (ranger/xgboost)
+
+brasileirao_2026 <- read_csv("brasileirao_2026.csv")
+
+glimpse(brasileirao_2026)
+```
+
+- 380 jogos no total; 20 times; cada time joga 19 vezes em casa e 19
+  fora
+- Jogos com `score == "x"` ainda não aconteceram → ficam de fora do
+  treino
+
+## Preparação dos dados
+
+```{r}
+#| label: preparacao
+jogos <- brasileirao_2026 |>
+  filter(score != "x") |>                                    # ← só jogos realizados
+  separate(score, into = c("gols_home", "gols_away"),        # ← "2x1" vira 2 colunas
+           sep = "x", convert = TRUE) |>
+  mutate(
+    home_win = factor(
+      if_else(gols_home > gols_away, "sim", "nao"),          # ← variável-alvo
+      levels = c("sim", "nao")                               # ← 1º nível = evento de interesse
+    )
+  ) |>
+  arrange(date)                                              # ← ordem cronológica importa!
+
+jogos |> count(home_win) |> mutate(proporcao = n / sum(n))
+```
+
+O mandante venceu \~46% dos jogos — **mesmo baseline da Aula 5**.
+
+## Divisão treino/teste: split temporal
+
+```{r}
+#| label: split
+set.seed(7321)
+split  <- initial_time_split(jogos, prop = 0.75)   # ← 75% mais antigos = treino
+treino <- training(split)                          # ← jan–jul
+teste  <- testing(split)                           # ← ago–dez (o "futuro")
+
+c(treino = nrow(treino), teste = nrow(teste))
+```
+
+Mesmo split da Aula 5: **sem vazamento temporal** — treinamos no
+passado, testamos no futuro.
+
+# Bloco 1 — Engenharia de Atributos
+
+## Por que expandir as features?
+
+Na Aula 5, o modelo linear tinha 3 features de saldo. Hoje, os
+algoritmos baseados em árvores **capturam interações não lineares**
+naturalmente — mas precisam de **variáveis ricas** para brilhar.
+
+::: callout-note
+## "Entra lixo, sai lixo"
+
+Nenhum algoritmo — por mais sofisticado que seja — extrai signal de
+dados pobres. A **Engenharia de Atributos** é onde o cientista de dados
+mais agrega valor.
+:::
+
+Vamos criar **3 grupos** de novas features, todas calculadas **só com o
+passado** (sem *data leakage*):
+
+1.  **Forma recente:** média móvel de gols nos últimos 5 jogos
+2.  **Aproveitamento mandante vs. visitante:** rendimento específico
+3.  **Momento da tabela:** diferença de pontos e saldo de gols
+
+## Ratings: o que já tínhamos (Aula 5)
+
+Reutilizamos os ratings calculados **somente com o treino** (mesmo
+código da Aula 5):
+
+```{r}
+#| label: ratings
+stats_home <- treino |> group_by(time = home) |>
+  summarise(jogos = n(),
+            pontos = sum(3 * (gols_home > gols_away) + (gols_home == gols_away)),
+            gm = sum(gols_home), gs = sum(gols_away))
+stats_away <- treino |> group_by(time = away) |>
+  summarise(jogos = n(),
+            pontos = sum(3 * (gols_away > gols_home) + (gols_away == gols_home)),
+            gm = sum(gols_away), gs = sum(gols_home))
+
+ratings <- full_join(stats_home, stats_away, by = "time") |>
+  mutate(across(-time, ~ replace_na(.x, 0))) |>
+  transmute(time,
+            aproveitamento = (pontos.x + pontos.y) / (3 * (jogos.x + jogos.y)),
+            gm_medio = (gm.x + gm.y) / (jogos.x + jogos.y),
+            gs_medio = (gs.x + gs.y) / (jogos.x + jogos.y))
+```
+
+## Aproveitamento mandante vs. visitante
+
+O `aproveitamento` geral mistura casa e fora. Mas jogar em casa é
+diferente de jogar fora! Criamos **dois aproveitamentos separados**:
+
+```{r}
+#| label: ap-casa-fora
+ap_casa <- treino |>
+  group_by(time = home) |>                               # ← só jogos como mandante
+  summarise(ap_casa = sum(3 * (gols_home > gols_away) +
+                          (gols_home == gols_away)) / (3 * n()))
+
+ap_fora <- treino |>
+  group_by(time = away) |>                               # ← só jogos como visitante
+  summarise(ap_fora = sum(3 * (gols_away > gols_home) +
+                          (gols_away == gols_home)) / (3 * n()))
+```
+
+::: fragment
+Intuição: o Flamengo pode ter 70% de aproveitamento geral, mas **85%
+jogando em casa** e só **55% jogando fora**. A árvore pode explorar essa
+diferença.
+:::
+
+## Forma recente: média móvel de gols
+
+A forma recente é **dinâmica**: muda a cada rodada. Para cada jogo,
+olhamos os **5 jogos anteriores** de cada time (excluindo o jogo atual):
+
+```{r}
+#| label: team-games
+# Cada time aparece 2x por rodada (como mandante e como visitante)
+team_games <- bind_rows(
+  jogos |> transmute(date, time = home, opp = away,
+                     gols_pro = gols_home, gols_contra = gols_away) |>
+    mutate(pontos = case_when(gols_pro > gols_contra ~ 3,
+                              gols_pro == gols_contra ~ 1, TRUE ~ 0)),
+  jogos |> transmute(date, time = away, opp = home,
+                     gols_pro = gols_away, gols_contra = gols_home) |>
+    mutate(pontos = case_when(gols_pro > gols_contra ~ 3,
+                              gols_pro == gols_contra ~ 1, TRUE ~ 0))
+) |>
+  arrange(time, date) |>                                 # ← ordena por time e data
+  group_by(time) |>                                      # ← agrupa por time
+  mutate(
+    # Cumulativo ATÉ o jogo anterior (lag evita usar o jogo atual)
+    pontos_cum     = lag(cumsum(pontos)) |> replace_na(0),
+    saldo_gols_cum = lag(cumsum(gols_pro - gols_contra)) |> replace_na(0),
+    # Forma recente: média dos últimos 5 jogos (exclui o atual)
+    forma_gm = rowMeans(cbind(lag(gols_pro, 1), lag(gols_pro, 2),
+                              lag(gols_pro, 3), lag(gols_pro, 4),
+                              lag(gols_pro, 5)), na.rm = TRUE),
+    forma_gs = rowMeans(cbind(lag(gols_contra, 1), lag(gols_contra, 2),
+                              lag(gols_contra, 3), lag(gols_contra, 4),
+                              lag(gols_contra, 5)), na.rm = TRUE)
+  ) |>
+  ungroup() |>
+  mutate(across(c(forma_gm, forma_gs), ~ if_else(is.na(.x), 0, .x)))  # ← 1º jogo: sem histórico
+```
+
+## Por que `lag()` evita *data leakage*
+
+::: callout-important
+## Sem olhar o futuro!
+
+Cada jogo recebe sua forma calculada **apenas com jogos anteriores**.
+O `lag()` desloca a série temporal, garantindo que cada jogo só veja os
+jogos **anteriores** (do 1º até o 5º antes dele).
+
+O cálculo é feito sobre **todos os jogos realizados** (não só o treino),
+mas cada ponto olha só para trás — **não há vazamento**.
+:::
+
+Para os jogos do **teste**, a forma usa jogos do treino + jogos
+anteriores do próprio teste — exatamente como seria na vida real
+(prever a próxima rodada com tudo que já aconteceu).
+
+## Momento da tabela
+
+As duas colunas `pontos_cum` e `saldo_gols_cum` capturam o **momento do
+time na classificação** até a rodada anterior:
+
+- `pontos_cum` → pontos acumulados (posição na tabela)
+- `saldo_gols_cum` → saldo de gols acumulado (desempate natural)
+
+A diferença entre os dois times nesses indicadores vira feature:
+
+- `dif_pontos` → o mandante está quantos pontos à frente do visitante?
+- `dif_saldo_gols` → o mandante tem saldo de gols melhor quanto?
+
+## Juntando tudo: as 11 features
+
+```{r}
+#| label: add-features
+add_features_full <- function(df, ratings, ap_casa, ap_fora, team_games) {
+  # Estatísticas globais por time (do treino)
+  df <- df |>
+    left_join(ratings, by = c("home" = "time")) |>
+    rename_with(~ paste0(.x, "_home"), c(aproveitamento, gm_medio, gs_medio)) |>
+    left_join(ratings, by = c("away" = "time")) |>
+    rename_with(~ paste0(.x, "_away"), c(aproveitamento, gm_medio, gs_medio)) |>
+    left_join(ap_casa, by = c("home" = "time")) |>
+    left_join(ap_fora, by = c("away" = "time"))
+
+  # Forma recente e momento da tabela (do histórico, só passado)
+  home_stats <- team_games |>
+    select(date, time, forma_gm_home = forma_gm, forma_gs_home = forma_gs,
+           pontos_cum_home = pontos_cum, saldo_gols_cum_home = saldo_gols_cum)
+  away_stats <- team_games |>
+    select(date, time, forma_gm_away = forma_gm, forma_gs_away = forma_gs,
+           pontos_cum_away = pontos_cum, saldo_gols_cum_away = saldo_gols_cum)
+
+  df |>
+    left_join(home_stats, by = c("date", "home" = "time")) |>
+    left_join(away_stats, by = c("date", "away" = "time")) |>
+    mutate(across(c(ap_casa, ap_fora), ~ replace_na(.x, 0.5))) |>  # ← fallback neutro
+    mutate(
+      saldo_forca    = aproveitamento_home - aproveitamento_away,  # ← Aula 5
+      saldo_ataque   = gm_medio_home - gm_medio_away,              # ← Aula 5
+      saldo_defesa   = gs_medio_away - gs_medio_home,              # ← Aula 5
+      dif_pontos     = pontos_cum_home - pontos_cum_away,          # ← novo
+      dif_saldo_gols = saldo_gols_cum_home - saldo_gols_cum_away   # ← novo
+    )
+}
+
+treino_f <- add_features_full(treino, ratings, ap_casa, ap_fora, team_games)
+teste_f  <- add_features_full(teste, ratings, ap_casa, ap_fora, team_games)
+
+treino_f |>
+  select(home, away, saldo_forca, forma_gm_home, forma_gs_home,
+         forma_gm_away, forma_gs_away, ap_casa, ap_fora,
+         dif_pontos, dif_saldo_gols, home_win) |>
+  head(5)
+```
+
+## A fórmula do modelo
+
+```{r}
+#| label: formula
+formula_modelo <- home_win ~ saldo_forca + saldo_ataque + saldo_defesa +
+  forma_gm_home + forma_gs_home + forma_gm_away + forma_gs_away +
+  ap_casa + ap_fora + dif_pontos + dif_saldo_gols
+
+# CV temporal (mesma janela deslizante da Aula 5)
+set.seed(4815)
+cv_folds <- sliding_window(treino_f, lookback = 90, assess_stop = 25, step = 20)
+
+mset <- metric_set(roc_auc, mn_log_loss, accuracy)  # ← métricas no CV
+```
+
+Passamos de **1 feature** (Aula 5, baseline) para **11 features**. Os
+modelos de árvores vão decidir quais importam.
+
+# Bloco 2 — Árvores de Decisão
+
+## A ideia: regras se/então
+
+A Árvore de Decisão divide o espaço de dados em **regiões
+ortogonais** por meio de perguntas binárias simples:
+
+> *"O saldo de força é maior que 0.3?"*
+> → Sim: *"A forma recente do mandante é maior que 1.5?"*
+> → Não: *"O aproveitamento em casa é maior que 50%?"*
+
+Cada **nó** faz uma pergunta; cada **folha** dá uma previsão
+(probabilidade de vitória do mandante).
+
+## Critérios de pureza: o quão "misturado" está o nó?
+
+A árvore escolhe a pergunta que **mais reduz a impureza** do nó. Mas
+o que é impureza? É simples: **quão misturado** está o nó.
+
+::: columns
+::: column
+**Nó puro (impureza = 0)** ✅
+
+10 vitórias, 0 derrotas → 100% de uma classe → a árvore para de
+dividir. Decisão tomada!
+:::
+
+::: column
+**Nó misturado (impureza máxima)** ⚠️
+
+5 vitórias, 5 derrotas → 50/50 → máxima incerteza → a árvore **tenta
+dividir de novo**
+:::
+:::
+
+A árvore testa todas as perguntas possíveis e escolhe a que **mais
+deixa o nó puro**. Dois critérios clássicos medem isso:
+
+-   **Gini** (padrão do `rpart`) — mais simples, sem logaritmo
+-   **Entropia** — mesma ideia, com logaritmo
+
+::: fragment
+Na prática, **Gini e Entropia produzem árvores quase idênticas**. O
+Gini é o padrão por ser computacionalmente mais barato.
+:::
+
+## Gini vs. Entropia: diferença prática
+
+```{r}
+#| label: gini-entropy
+#| echo: false
+#| fig-height: 4.5
+gini_entropy_plot <- tibble(p_sim = seq(0.001, 0.999, length.out = 300)) |>
+  mutate(
+    gini = 1 - p_sim^2 - (1 - p_sim)^2,
+    entropia = -p_sim * log2(p_sim) - (1 - p_sim) * log2(1 - p_sim)
+  ) |>
+  pivot_longer(c(gini, entropia), names_to = "criterio", values_to = "valor") |>
+  ggplot(aes(x = p_sim, y = valor, color = criterio,
+             text = paste0(
+               "P(vitória) = ", round(p_sim * 100, 1), "%",
+               "\nImpureza = ", round(valor, 3)
+             ))) +
+  geom_line(linewidth = 1.2) +
+  geom_vline(xintercept = 0.5, linetype = "dashed", color = "gray50") +
+  labs(x = "P(vitória do mandante) no nó",
+       y = "Impureza", color = "Critério") +
+  theme_minimal()
+
+ggplotly(gini_entropy_plot, tooltip = "text") |>
+  layout(showlegend = TRUE)
+```
+
+As duas curvas têm formato quase idêntico — na prática, **Gini e
+Entropia produzem árvores muito parecidas**. O Gini é o padrão do
+`rpart` por ser computacionalmente mais barato (sem logaritmo).
+
+## Prós e contras das árvores
+
+::: columns
+::: column
+**Prós** ✅
+
+-   **Interpretabilidade total** ("modelo caixa branca"): qualquer árvore
+    pode ser desenhada e lida por um leigo
+-   Captura **interações** automaticamente (sem precisar criar termos de
+    multiplicação à mão)
+-   Lida com **variáveis categóricas e numéricas** sem pré-processamento
+-   Não assume nenhuma forma funcional (linear, quadrática...)
+:::
+
+::: column
+**Contras** ❌
+
+-   **Sobreajuste (*overfitting*)**: cresce até decorar o treino
+-   **Instabilidade**: uma mudança em poucos jogos gera uma árvore
+    completamente diferente
+-   **Fronteiras ortogonais**: só divide em "degraus", nunca em
+    diagonais suaves
+-   Tende a **enviesar** para a classe majoritária se o dataset for
+    desbalanceado
+:::
+:::
+
+## Regularização: poda da árvore
+
+A árvore sem controle cresce até cada folha ter 1 só jogo → **decora o
+treino**. A solução é **regularizar** — exatamente como fizemos com o
+Lasso na Aula 5, mas com hiperparâmetros diferentes:
+
+| Hiperparâmetro | O que controla | Analogia com a Aula 5 |
+|---|---|---|
+| `cost_complexity` | Pedágio por folha extra — poda ramos que não valem a pena | O "lambda" do Lasso |
+| `tree_depth` | Profundidade máxima — limita quantas perguntas em sequência | Limite de coeficientes não nulos |
+| `min_n` | Mínimo de jogos por folha — evita generalizar de 2 casos | Tamanho mínimo de amostra |
+
+::: callout-note
+**Conexão com a Aula 5:** assim como o Lasso "cortava" coeficientes
+desnecessários, a poda **corta ramos que não ajudam**. Árvore grande
+demais = decora o treino (*overfit*); poda forte demais = simplão demais
+(*underfit*). O ponto ótimo está no meio.
+:::
+
+## Ajustando e tunando a árvore
+
+```{r}
+#| label: tree-tune
+tree_spec <- decision_tree(
+  cost_complexity = tune(),     # ← pedágio por folha (a "poda")
+  tree_depth = tune(),          # ← profundidade máxima
+  min_n = tune()                # ← mínimo de jogos por folha
+) |>
+  set_engine("rpart") |>        # ← implementação CART clássica
+  set_mode("classification")
+
+tree_wf <- workflow() |>
+  add_model(tree_spec) |>
+  add_formula(formula_modelo)
+
+tree_grid <- grid_regular(      # ← 3 valores × 3 × 3 = 27 combinações
+  cost_complexity(range = c(-4, -1)),   # ← 0.0001 a 0.1
+  tree_depth(range = c(2, 8)),         # ← profundidade 2 a 8
+  min_n(range = c(5, 30)),             # ← 5 a 30 jogos por folha
+  levels = 3
+)
+
+res_tree <- tune_grid(tree_wf, resamples = cv_folds,
+                      grid = tree_grid, metrics = mset)
+```
+
+## O melhor ponto de poda
+
+```{r}
+#| label: tree-autoplot
+#| echo: false
+#| fig-height: 4.5
+autoplot(res_tree, metric = "roc_auc") +
+  labs(title = "Perfil da árvore: AUROC por combinação de hiperparâmetros")
+```
+
+Leitura: árvores muito profundas (`tree_depth = 8`) com poda fraca
+(`cost_complexity` baixo) sobreajustam. O ponto ótimo fica no
+**equilíbrio**: profundidade moderada + poda que corta o excesso.
+
+## A árvore na tela: o momento "caixa branca"
+
+```{r}
+#| label: tree-viz
+# Árvore simples para visualização (profundidade 3 = legível em slide)
+tree_viz_spec <- decision_tree(tree_depth = 3, min_n = 15) |>
+  set_engine("rpart") |>
+  set_mode("classification")
+
+tree_viz_fit <- workflow() |>
+  add_model(tree_viz_spec) |>
+  add_formula(formula_modelo) |>
+  fit(data = treino_f)
+
+tree_viz_fit |> extract_fit_engine() |> rpart.plot(extra = 104)
+```
+
+## Como ler a árvore
+
+Cada nó mostra:
+
+1.  **A regra de divisão** (ex: `dif_pontos >= 5.5`)
+2.  **A previsão** (sim/nao) e a **probabilidade** no nó
+3.  **A proporção** de jogos no nó
+
+::: fragment
+-   A **primeira pergunta** é a que mais reduz a impureza → é a
+    **feature mais importante** na visão da árvore
+-   Cada ramo cria uma **região** do espaço de dados
+-   As folhas dão a previsão final — é só seguir o caminho!
+:::
+
+## Avaliando a árvore no teste
+
+```{r}
+#| label: tree-final
+best_tree <- select_best(res_tree, metric = "roc_auc")   # ← melhor combo do CV
+
+tree_final <- finalize_workflow(tree_wf, best_tree) |>    # ← trava os hiperparâmetros
+  fit(data = treino_f)                                     # ← re-treina com TODO o treino
+
+pred_tree <- predict(tree_final, teste_f, type = "prob") |>
+  bind_cols(predict(tree_final, teste_f, type = "class")) |>
+  bind_cols(teste_f)
+
+roc_auc(pred_tree, truth = home_win, .pred_sim)
+mn_log_loss(pred_tree, truth = home_win, .pred_sim)
+f_meas(pred_tree, truth = home_win, estimate = .pred_class)
+kap(pred_tree, truth = home_win, estimate = .pred_class)
+```
+
+::: fragment
+A árvore já supera o baseline da Aula 5 — mesmo sem ensembles. Mas
+ela é **instável**: com outra semente, poderia ser bem diferente.
+:::
+
+## Curva ROC: acertos vs. alarmes falsos
+
+A **Curva ROC** mostra como o modelo se sai em **diferentes pontos de
+corte** (thresholds):
+
+- **Eixo X (FPR):** quantos jogos o modelo "chutou vitória" e errou —
+  *alarme falso*
+- **Eixo Y (TPR):** quantas vitórias reais o modelo acertou —
+  *sensibilidade*
+- A linha tracejada é o "chute aleatório" (50/50). Quanto **mais para o
+  canto superior esquerdo**, melhor o modelo
+
+::: fragment
+**Use o controle deslizante** abaixo para variar o threshold e ver como
+sensibilidade e alarme falso mudam juntos!
+:::
+
+Primeiro, a **matriz de confusão** mostra quantos jogos o modelo acertou
+e errou no ponto de corte padrão (50%):
+
+```{r}
+#| label: cm-tree
+#| echo: false
+#| fig-height: 4
+# Matriz de confusão como heatmap interativo
+cm_tree_data <- pred_tree |>
+  count(home_win, .pred_class) |>
+  rename(Real = home_win, Previsto = .pred_class, n = n)
+
+cm_tree_plot <- ggplot(cm_tree_data, aes(x = Previsto, y = Real, fill = n,
+                                         text = paste0("Real: ", Real,
+                                                       "\nPrevisto: ", Previsto,
+                                                       "\nJogos: ", n))) +
+  geom_tile(color = "white", linewidth = 2) +
+  geom_text(aes(label = n), size = 8) +
+  scale_fill_gradient(low = "#f0f0f0", high = "steelblue") +
+  labs(title = "Matriz de confusão — Árvore de Decisão") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggplotly(cm_tree_plot, tooltip = "text")
+```
+
+```{r}
+#| label: roc-tree
+#| fig-height: 5
+# Função reutilizável: plota ROC interativa com ponto animado
+plot_roc_interativo <- function(pred_df, model_name) {
+  roc_data <- roc_curve(pred_df, truth = home_win, .pred_sim) |>
+    filter(!is.na(.threshold), is.finite(.threshold))
+
+  # Limita os frames para uma animação mais fluida (~40 pontos)
+  if (nrow(roc_data) > 40) {
+    idx <- as.integer(round(seq(1, nrow(roc_data), length.out = 40)))
+    roc_data <- roc_data[idx, ]
+  }
+
+  plot_ly(
+    data = roc_data,
+    x = ~1 - specificity,
+    y = ~sensitivity,
+    type = 'scatter',
+    mode = 'lines',
+    line = list(color = 'steelblue', width = 3),
+    showlegend = FALSE
+  ) |>
+    add_trace(
+      data = roc_data,
+      x = ~1 - specificity,
+      y = ~sensitivity,
+      frame = ~.threshold,
+      type = 'scatter',
+      mode = 'markers',
+      marker = list(size = 14, color = 'red',
+                    line = list(color = 'white', width = 2)),
+      text = ~paste0(
+        "Threshold: ", round(.threshold, 3),
+        "<br>TPR (Sensibilidade): ", round(sensitivity, 3),
+        "<br>FPR (Alarme falso): ", round(1 - specificity, 3)
+      ),
+      hoverinfo = 'text',
+      showlegend = FALSE
+    ) |>
+    layout(
+      title = paste0("Curva ROC interativa — ", model_name),
+      xaxis = list(title = "FPR (alarme falso)", range = c(0, 1)),
+      yaxis = list(title = "TPR (sensibilidade)", range = c(0, 1)),
+      showlegend = FALSE,
+      shapes = list(
+        list(type = 'line', x0 = 0, y0 = 0, x1 = 1, y1 = 1,
+             line = list(dash = 'dash', color = 'gray', width = 1))
+      )
+    )
+}
+
+plot_roc_interativo(pred_tree, "Árvore de Decisão")
+```
+
+# Bloco 3 — Random Forest
+
+## A sabedoria das multidões
+
+Uma árvore é como **um único torcedor opinando**: pode acertar muito ou
+errar feio, dependendo do que viu. A **Floresta Aleatória** agrega a
+opinião de **centenas de árvores independentes**:
+
+> *"Se você pedir para 500 pessoas diferentes palpitarem no
+> Brasileirão, a média dos palpites será melhor que qualquer palpite
+> individual."*
+
+Isso é **ensemble learning**: combinar modelos fracos (árvores
+individuais) para produzir um modelo forte.
+
+::: callout-note
+## Referência: Géron, Cap. 7
+
+A intuição é a mesma de pedir palpites a várias pessoas: se cada um
+vê **informação diferente**, a média dos palpites é melhor que qualquer
+palpite individual. Mais árvores = mais estabilidade. O segredo é
+garantir que elas sejam **suficientemente diferentes** entre si.
+:::
+
+## Bagging: amostragem com reposição
+
+Como garantir que as 500 árvores sejam diferentes? Com **aleatoriedade
+dupla**:
+
+1.  **Bagging** (*Bootstrap Aggregating*): cada árvore treina numa
+    **amostra com reposição** do treino (\~63% dos jogos únicos, 37%
+    repetidos). Jogos que ficam de fora são os **OOB** (*Out-of-Bag*) —
+    servem como validação embutida.
+
+2.  **Aleatoriedade nas features (*mtry*)**: a cada divisão, a árvore só
+    considera **algumas das 11 features** para escolher a melhor pergunta.
+    Se `mtry = 11`, todas as features competem. Se `mtry = 3`, só 3
+    sorteadas
+    por nó.
+
+::: fragment
+O `mtry` baixo **força diversidade**: impede que todas as árvores
+escolham a mesma feature dominante (ex: `saldo_forca`) no topo.
+:::
+
+## Hiperparâmetros do Random Forest
+
+| Hiperparâmetro | O que controla | Valor típico |
+|---|---|---|
+| `trees` | Número de árvores na floresta | 500 (fixo) |
+| `mtry` | Features sorteadas por divisão | tunar (2 a 8) |
+| `min_n` | Mínimo de jogos por folha | tunar (5 a 20) |
+
+::: callout-tip
+**Por que fixar `trees = 500`?** Mais árvores **nunca prejudicam** o
+desempenho (só estabilizam) — o custo é tempo de treino. 500 é o ponto
+onde o ganho marginal é desprezível. O que importa tunar é `mtry` e
+`min_n`.
+:::
+
+## Ajustando o Random Forest
+
+```{r}
+#| label: rf-tune
+rf_spec <- rand_forest(
+  mtry = tune(),            # ← features sorteadas por divisão
+  trees = 500,              # ← fixo: mais árvores não faz mal
+  min_n = tune()            # ← mínimo de jogos por folha
+) |>
+  set_engine("ranger", importance = "impurity") |>  # ← calcula importância
+  set_mode("classification")
+
+rf_wf <- workflow() |>
+  add_model(rf_spec) |>
+  add_formula(formula_modelo)
+
+rf_grid <- grid_regular(     # ← 3 × 3 = 9 combinações
+  mtry(range = c(2, 8)),     # ← 2 a 8 features por divisão
+  min_n(range = c(5, 20)),   # ← 5 a 20 jogos por folha
+  levels = 3
+)
+
+res_rf <- tune_grid(rf_wf, resamples = cv_folds,
+                    grid = rf_grid, metrics = mset)
+```
+
+## Resultado do tuning: o melhor `mtry`
+
+```{r}
+#| label: rf-autoplot
+#| echo: false
+#| fig-height: 4.5
+autoplot(res_rf, metric = "roc_auc") +
+  labs(title = "Random Forest: AUROC por mtry e min_n")
+```
+
+## Feature importance: a pergunta do dia
+
+```{r}
+#| label: rf-vip
+#| fig-height: 5
+best_rf <- select_best(res_rf, metric = "roc_auc")
+
+rf_final <- finalize_workflow(rf_wf, best_rf) |>
+  fit(data = treino_f)
+
+# Importância: o ranger armazena em $variable.importance
+rf_engine <- rf_final |> extract_fit_engine()
+imp_rf <- enframe(rf_engine$variable.importance, "feature", "importance") |>
+  mutate(feature = fct_reorder(feature, importance))
+
+rf_vip_plot <- ggplot(imp_rf, aes(x = feature, y = importance,
+                                  text = paste0(feature, ": ", round(importance, 1)))) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Importância das variáveis — Random Forest",
+       x = NULL, y = "Redução de impureza (Gini)") +
+  theme_minimal()
+
+ggplotly(rf_vip_plot, tooltip = "text")
+```
+
+## Lendo a importância
+
+O gráfico mostra **quanto cada feature reduziu a impureza** em média,
+por todas as 500 árvores:
+
+::: fragment
+-   As **features do topo** são as que mais aparecem nas divisões
+    importantes — o modelo "confia" nelas
+-   As **features do rodapé** mal contribuíram — a árvore quase nunca as
+    escolheu
+-   **Resposta da pergunta do dia:** compare `forma_gm_home` (momento
+    recente) com `ap_casa` (mando de campo) — qual pesa mais?
+:::
+
+## Avaliando o Random Forest no teste
+
+```{r}
+#| label: rf-eval
+pred_rf <- predict(rf_final, teste_f, type = "prob") |>
+  bind_cols(predict(rf_final, teste_f, type = "class")) |>
+  bind_cols(teste_f)
+
+roc_auc(pred_rf, truth = home_win, .pred_sim)
+mn_log_loss(pred_rf, truth = home_win, .pred_sim)
+f_meas(pred_rf, truth = home_win, estimate = .pred_class)
+kap(pred_rf, truth = home_win, estimate = .pred_class)
+```
+
+::: fragment
+A Floresta reduz a variância → **AUROC sobe e Log-Loss cai** em relação
+à árvore única. A estabilidade é a grande vantagem.
+:::
+
+## Curva ROC — Random Forest
+
+```{r}
+#| label: roc-rf
+#| echo: false
+#| fig-height: 5
+plot_roc_interativo(pred_rf, "Random Forest")
+```
+
+# Bloco 4 — Gradient Boosting (XGBoost)
+
+## Aprendizado sequencial
+
+O **Gradient Boosting** muda a estratégia: em vez de árvores
+independentes (como no Random Forest), cada nova árvore é treinada para
+**corrigir os erros residuais** das anteriores.
+
+```
+Árvore 1: prevê P(vitória)        →  resíduo = real - P
+Árvore 2: prevê o resíduo         →  P atualizada = P + passo × resíduo
+Árvore 3: prevê o NOVO resíduo    →  P atualizada de novo
+...e assim por diante
+```
+
+| Conceito | O que é |
+|---|---|
+| **Resíduo** | O que o modelo atual ainda não consegue prever (real - previsto) |
+| **learn_rate** | Tamanho do passo: quanto do resíduo cada nova árvore adiciona |
+| **Árvores fracas** | Cada árvore é rasa (depth 3), sozinha é péssima — mas em conjunto, poderosas |
+
+## Como difere do Random Forest
+
+::: columns
+::: column
+**Random Forest** 🌳🌳🌳
+
+-   Árvores **independentes** (paralelo)
+-   Cada uma vê uma amostra diferente
+-   Agrega por **votação/média**
+-   Reduz **variância**
+-   Hiperparâmetro chave: `mtry`
+:::
+
+::: column
+**Gradient Boosting** 🌳→🌳→🌳
+
+-   Árvores **sequenciais** (cada uma corrige a anterior)
+-   Cada uma vê os **resíduos**
+-   Agrega por **soma ponderada**
+-   Reduz **viés** (aprende com os erros)
+-   Hiperparâmetros chave: `learn_rate`, `trees`
+:::
+:::
+
+::: callout-note
+**Menção a LightGBM e CatBoost:** existem outras implementações de
+boosting (LightGBM usa binning de features para acelerar; CatBoost lida
+com categóricas nativamente). Em R, o `xgboost` é o motor mais maduro e
+integrado ao `tidymodels`.
+:::
+
+## Hiperparâmetros do XGBoost
+
+| Hiperparâmetro | O que controla | Valor típico |
+|---|---|---|
+| `learn_rate` | Quanto do erro cada árvore corrige (passo do aprendizado) | 0.001 a 0.1 |
+| `trees` | Número de árvores sequenciais | 50 a 300 |
+| `tree_depth` | Profundidade de cada árvore fraca | 3 (fixo) |
+
+::: callout-tip
+**Intuição do `learn_rate`:** valor baixo = aprende devagar (precisa de
+mais árvores, mas comete menos *overfit*). Valor alto = aprende rápido,
+mas pode "passar do ponto". O ideal é **passo pequeno + muitas árvores**.
+:::
+
+## Ajustando o XGBoost
+
+```{r}
+#| label: xgb-tune
+xgb_spec <- boost_tree(
+  trees = tune(),            # ← nº de árvores sequenciais
+  tree_depth = 3,            # ← fixo: árvores fracas (rasas)
+  learn_rate = tune()        # ← taxa de aprendizado (η)
+) |>
+  set_engine("xgboost") |>
+  set_mode("classification")
+
+xgb_wf <- workflow() |>
+  add_model(xgb_spec) |>
+  add_formula(formula_modelo)
+
+xgb_grid <- grid_regular(     # ← 3 × 3 = 9 combinações
+  learn_rate(range = c(-3, -1)),  # ← 0.001 a 0.1
+  trees(range = c(50, 300)),     # ← 50 a 300 árvores
+  levels = 3
+)
+
+res_xgb <- tune_grid(xgb_wf, resamples = cv_folds,
+                     grid = xgb_grid, metrics = mset)
+```
+
+## Avaliando o XGBoost no teste
+
+```{r}
+#| label: xgb-final
+best_xgb <- select_best(res_xgb, metric = "roc_auc")
+
+xgb_final <- finalize_workflow(xgb_wf, best_xgb) |>
+  fit(data = treino_f)
+
+pred_xgb <- predict(xgb_final, teste_f, type = "prob") |>
+  bind_cols(predict(xgb_final, teste_f, type = "class")) |>
+  bind_cols(teste_f)
+
+roc_auc(pred_xgb, truth = home_win, .pred_sim)
+mn_log_loss(pred_xgb, truth = home_win, .pred_sim)
+f_meas(pred_xgb, truth = home_win, estimate = .pred_class)
+kap(pred_xgb, truth = home_win, estimate = .pred_class)
+```
+
+::: fragment
+O XGBoost costuma entregar o **melhor AUROC** da turma — é o algoritmo
+que domina as competições do Kaggle com dados tabulares.
+:::
+
+## Curva ROC — XGBoost
+
+```{r}
+#| label: roc-xgb
+#| echo: false
+#| fig-height: 5
+plot_roc_interativo(pred_xgb, "XGBoost")
+```
+
+## Importância das variáveis no XGBoost
+
+```{r}
+#| label: xgb-vip
+#| echo: false
+#| fig-height: 4.5
+# Importância: o xgboost armazena em xgb.importance() (coluna Gain)
+xgb_engine <- xgb_final |> extract_fit_engine()
+
+imp_xgb <- as_tibble(xgboost::xgb.importance(model = xgb_engine)) |>
+  select(feature = Feature, importance = Gain) |>
+  mutate(feature = fct_reorder(feature, importance))
+
+xgb_vip_plot <- ggplot(imp_xgb, aes(x = feature, y = importance,
+                                    text = paste0(feature, ": ", round(importance, 3)))) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Importância das variáveis — XGBoost",
+       x = NULL, y = "Ganho (redução da função de perda)") +
+  theme_minimal()
+
+ggplotly(xgb_vip_plot, tooltip = "text")
+```
+
+::: fragment
+Compare com o gráfico do Random Forest: as features importantes mudam?
+O XGBoost mede importância pelo **ganho** (quanto cada feature reduziu
+a função de perda), enquanto o RF mede pela **impureza**.
+:::
+
+# Bloco 5 — Comparação Final
+
+## Tabela comparativa: todos os modelos
+
+Para fechar os supervisionados, comparamos **4 modelos** nas **mesmas 11
+features**, **mesmo split temporal** e **mesmo teste**:
+
+```{r}
+#| label: comparacao
+# Regressão Logística (da Aula 5, agora com 11 features)
+lr_spec <- logistic_reg() |> set_engine("glm")
+lr_fit <- workflow() |> add_model(lr_spec) |> add_formula(formula_modelo) |>
+  fit(data = treino_f)
+
+# Função que avalia um modelo no teste
+avaliar <- function(modelo, dados) {
+  pred <- predict(modelo, new_data = dados, type = "prob") |>
+    bind_cols(predict(modelo, new_data = dados, type = "class")) |>
+    bind_cols(dados)
+  bind_rows(
+    roc_auc(pred, truth = home_win, .pred_sim),
+    f_meas(pred, truth = home_win, estimate = .pred_class),
+    kap(pred, truth = home_win, estimate = .pred_class),
+    mn_log_loss(pred, truth = home_win, .pred_sim),
+    accuracy(pred, truth = home_win, estimate = .pred_class)
+  ) |>
+    select(.metric, .estimate)
+}
+
+# Coleta resultados
+resultados <- bind_rows(
+  avaliar(lr_fit, teste_f)     |> mutate(modelo = "Reg. Logística"),
+  avaliar(tree_final, teste_f) |> mutate(modelo = "Árvore"),
+  avaliar(rf_final, teste_f)   |> mutate(modelo = "Random Forest"),
+  avaliar(xgb_final, teste_f)  |> mutate(modelo = "XGBoost")
+) |>
+  select(modelo, .metric, .estimate) |>
+  pivot_wider(names_from = .metric, values_from = .estimate) |>
+  rename(AUROC = roc_auc, `F1` = f_meas, Kappa = kap,
+         `Log-Loss` = mn_log_loss, Acurácia = accuracy) |>
+  arrange(desc(AUROC))
+
+knitr::kable(resultados, digits = 3)
+```
+
+## Gráfico: AUROC e F1 lado a lado
+
+```{r}
+#| label: comparacao-plot
+#| echo: false
+#| fig-height: 5
+comp_plot <- resultados |>
+  select(modelo, AUROC, F1) |>
+  pivot_longer(c(AUROC, F1), names_to = "metrica", values_to = "valor") |>
+  mutate(modelo = fct_reorder(modelo, valor, .desc = TRUE)) |>
+  ggplot(aes(x = modelo, y = valor, fill = metrica,
+             text = paste0(modelo, " — ", metrica, ": ", sprintf("%.3f", valor)))) +
+  geom_col(position = "dodge", width = 0.6) +
+  geom_text(aes(label = sprintf("%.3f", valor)),
+            position = position_dodge(0.6), vjust = -0.3, size = 3) +
+  scale_y_continuous(limits = c(0, 1)) +
+  labs(x = NULL, y = "Valor", fill = "Métrica",
+       title = "Comparação de modelos no teste (Brasileirão 2026)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+
+ggplotly(comp_plot, tooltip = "text")
+```
+
+## Todas as curvas ROC juntas
+
+```{r}
+#| label: roc-comparacao
+#| echo: false
+#| fig-height: 5.5
+roc_all <- bind_rows(
+  roc_curve(pred_tree, truth = home_win, .pred_sim) |> mutate(modelo = "Árvore"),
+  roc_curve(pred_rf,   truth = home_win, .pred_sim) |> mutate(modelo = "Random Forest"),
+  roc_curve(pred_xgb,  truth = home_win, .pred_sim) |> mutate(modelo = "XGBoost")
+) |> select(modelo, .threshold, sensitivity, specificity)
+
+plot_ly(
+  data = roc_all,
+  x = ~1 - specificity,
+  y = ~sensitivity,
+  color = ~modelo,
+  type = 'scatter',
+  mode = 'lines',
+  line = list(width = 2.5),
+  text = ~paste0(modelo, " — Threshold: ", round(.threshold, 3)),
+  hoverinfo = 'text'
+) |>
+  layout(
+    title = "Curvas ROC — todos os modelos no teste",
+    xaxis = list(title = "FPR (alarme falso)", range = c(0, 1)),
+    yaxis = list(title = "TPR (sensibilidade)", range = c(0, 1)),
+    legend = list(x = 0.7, y = 0.1),
+    shapes = list(
+      list(type = 'line', x0 = 0, y0 = 0, x1 = 1, y1 = 1,
+           line = list(dash = 'dash', color = 'gray', width = 1))
+    )
+  )
+```
+
+::: fragment
+Passe o mouse sobre cada curva para ver o threshold. A curva **mais
+ próxima do canto superior esquerdo** é o melhor modelo.
+:::
+
+## Quando usar cada modelo?
+
+| Critério | Reg. Logística | Árvore | Random Forest | XGBoost |
+|---|---|---|---|---|
+| **Interpretabilidade** | ⭐⭐⭐ coeficientes | ⭐⭐⭐⭐ árvore visual | ⭐⭐ importância | ⭐⭐ importância |
+| **Performance** | ⭐⭐ baseline | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **Estabilidade** | ⭐⭐⭐⭐ | ⭐⭐ instável | ⭐⭐⭐⭐ | ⭐⭐⭐ |
+| **Velocidade treino** | ⭐⭐⭐⭐⭐ instantâneo | ⭐⭐⭐⭐ rápido | ⭐⭐⭐ ok | ⭐⭐ depende |
+| **Lida com não linear** | ❌ | ✅ | ✅ | ✅ |
+| **Probabilidades calibradas** | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
+
+::: callout-tip
+**Regra de bolso:**
+
+-   Precisa **explicar** para gestão/cliente? → Reg. Logística ou
+    Árvore
+-   Precisa do **melhor resultado possível**? → XGBoost
+-   Quer **estabilidade sem muito ajuste**? → Random Forest
+:::
+
+# Fechamento
+
+## Resumo: o ciclo dos modelos supervisionados
+
+| Aula | Modelo | O que aprendeu |
+|---|---|---|
+| 3 | Regressão Linear | Pipeline `tidymodels`, treino/teste, MSE/R² |
+| 3–4 | Lasso / Ridge | Regularização, viés-variância, CV temporal |
+| 5 | Regressão Logística | Classificação, sigmoide, Log-Loss, ROC |
+| 5 | Métricas de classificação | Acurácia, Precisão, Recall, F1, Kappa |
+| **6** | **Árvores de Decisão** | **CART, Gini/Entropia, poda, caixa branca** |
+| **6** | **Random Forest** | **Bagging, ensemble, feature importance** |
+| **6** | **XGBoost** | **Boosting sequencial, learn_rate, residuais** |
+
+::: fragment
+Os modelos **lineares** (Aula 5) são **interpretabilidade pura** mas
+limitam-se a fronteiras retas. Os **modelos de árvores** (Aula 6)
+aprendem fronteiras complexas e capturam interações — ao custo de
+perder a simplicidade da leitura de coeficientes.
+:::
+
+## Bônus: prevendo o futuro
+
+```{r}
+#| label: futuro
+# Para jogos futuros, usamos a forma mais recente de cada time
+ultima_forma <- team_games |>
+  group_by(time) |>
+  slice_max(date, n = 1) |>                    # ← último jogo de cada time
+  ungroup() |>
+  select(time, forma_gm, forma_gs, pontos_cum, saldo_gols_cum)
+
+futuro <- brasileirao_2026 |>
+  filter(score == "x") |>                      # ← jogos que ainda vão acontecer
+  left_join(ratings, by = c("home" = "time")) |>
+  rename_with(~ paste0(.x, "_home"), c(aproveitamento, gm_medio, gs_medio)) |>
+  left_join(ratings, by = c("away" = "time")) |>
+  rename_with(~ paste0(.x, "_away"), c(aproveitamento, gm_medio, gs_medio)) |>
+  left_join(ap_casa, by = c("home" = "time")) |>
+  left_join(ap_fora, by = c("away" = "time")) |>
+  left_join(ultima_forma, by = c("home" = "time")) |>
+  rename(forma_gm_home = forma_gm, forma_gs_home = forma_gs,
+         pontos_cum_home = pontos_cum, saldo_gols_cum_home = saldo_gols_cum) |>
+  left_join(ultima_forma, by = c("away" = "time")) |>
+  rename(forma_gm_away = forma_gm, forma_gs_away = forma_gs,
+         pontos_cum_away = pontos_cum, saldo_gols_cum_away = saldo_gols_cum) |>
+  mutate(
+    saldo_forca    = aproveitamento_home - aproveitamento_away,
+    saldo_ataque   = gm_medio_home - gm_medio_away,
+    saldo_defesa   = gs_medio_away - gs_medio_home,
+    dif_pontos     = pontos_cum_home - pontos_cum_away,
+    dif_saldo_gols = saldo_gols_cum_home - saldo_gols_cum_away
+  )
+
+# Previsão com o melhor modelo (XGBoost)
+predict(xgb_final, new_data = futuro, type = "prob") |>
+  bind_cols(futuro) |>
+  select(date, home, away, .pred_sim) |>
+  arrange(desc(.pred_sim)) |>
+  head(10)
+```
+
+::: callout-warning
+Mesmas limitações da Aula 5: ratings congelados no treino, forma
+recente aproximada (último jogo disponível), modelo binário sem empates.
+É uma **projeção didática**.
+:::
+
+## Ponte para a Aula 7
+
+O **Aprendizado Supervisionado** está encerrado:
+
+-   **Regressão:** prever um número contínuo (preço, gols)
+-   **Classificação:** prever uma categoria (vitória/derrota, sim/nao)
+
+Mas e quando **não há rótulo**? Quando não sabemos quem "vence" ou
+"perde"?
+
+> **Aula 7 — Aprendizado Não Supervisionado:**
+> Clusterização (agrupar times por perfil de jogo) e PCA (reduzir 11
+> features em 2 eixos para visualizar).
+
+Até lá! 🎯
+
+## Resumo da aula
+
+1.  **Engenharia de atributos** transforma conhecimento de domínio em
+    features → o cientista agrega mais valor aqui que no algoritmo
+2.  **Árvore de Decisão** = regras se/então, caixa branca, mas instável
+    e propensa a overfitting → precisa de poda (`cost_complexity`)
+3.  **Random Forest** = centenas de árvores independentes → reduz
+    variância, estabiliza, e entrega **feature importance**
+4.  **Gradient Boosting (XGBoost)** = árvores sequenciais que corrigem
+    resíduos → reduz viés, geralmente o mais performático
+5.  **A comparação é justa** só quando todos usam o mesmo split, as
+    mesmas features e o mesmo teste
+6.  **Não existe modelo universalmente melhor** — a escolha depende de
+    interpretabilidade, performance, estabilidade e custo computacional
